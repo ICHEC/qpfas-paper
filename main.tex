@@ -1,0 +1,1082 @@
+\documentclass[journal,onecolumn]{IEEEtran}
+
+\usepackage{PRIMEarxiv}
+
+\usepackage[utf8]{inputenc} % allow utf-8 input
+\usepackage[T1]{fontenc}    % use 8-bit T1 fonts
+\usepackage{hyperref}       % hyperlinks
+\usepackage{url}            % simple URL typesetting
+\usepackage{booktabs}       % professional-quality tables
+\usepackage{amsfonts}       % blackboard math symbols
+\usepackage{amsmath}
+\usepackage{nicefrac}       % compact symbols for 1/2, etc.
+\usepackage{microtype}      % microtypography
+\usepackage{lipsum}
+\usepackage{fancyhdr}       % header
+\usepackage{graphicx}       % graphics
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{chemformula}
+\usepackage{float}
+\usepackage{lastpage}
+
+\usepackage[numbers]{natbib}
+
+\usepackage{fancyhdr}
+\pagestyle{fancy} 
+\cfoot{\thepage\ of \pageref{LastPage}}
+% \usepackage[symbol]{footmisc}
+\graphicspath{{media/}}     % organize your images and other figures under media/ folder
+
+% Header
+\pagestyle{fancy}
+\thispagestyle{empty}
+\rhead{\textit{QPFAS}} 
+
+% Update your Headers here
+\fancyhead[LO]{Pushing the Limits of Quantum Computing for Simulating PFAS Chemistry
+%%Scalable Molecular Simulation Pipeline with VQE towards PFAS Analysis
+}
+% \fancyhead[RE]{Firstauthor and Secondauthor} % Firstauthor et al. if more than 2 - must use \documentclass[twoside]{article}
+
+%% Title
+\title{
+Pushing the Limits of Quantum Computing for Simulating PFAS Chemistry
+}
+
+\author{
+    Emil Dimitrov, Goar S{\'a}nchez-Sanz, James Nelson, Lee O'Riordan, Myles Doyle, \\
+    \textbf{Se{\'a}n Courtney}, \textbf{Venkatesh Kannan}{\thanks{Corresponding author.}} \\
+    Irish Centre for High-End Computing (ICHEC) \\
+    \texttt{\{emil.dimitrov, venkatesh.kannan\}@ichec.ie}, \texttt{goar.sanchezsanz@manchester.ac.uk}, \\
+    \texttt{janelson@tcd.ie}, \texttt{loriordan@gmail.com}, \texttt{mylesdoyle7@gmail.com}, \texttt{seancourtney51@gmail.com} \\
+  \And
+    Hassan Naseri, Alberto Garc{\'i}a Garc{\'i}a, James Tricker , Marisa Faraggi\\
+    Accenture \\
+    \texttt{\{hassan.naseri, a.b.garcia.garcia, james.tricker, marisa.faraggi\}@accenture.com} \\
+  \And
+    Joshua Goings, Luning Zhao \\
+    IonQ \\
+    \texttt{\{goings, zhao\}@ionq.co}
+}
+
+\begin{document}
+\bstctlcite{IEEEexample:BSTcontrol}
+\maketitle
+
+\begin{abstract}
+Accurate and scalable methods for computational quantum chemistry can accelerate research and development in many fields, ranging from drug discovery to advanced material design. 
+%
+Solving the electronic Schr\"odinger equation is the core problem of computational chemistry. 
+%
+However, the combinatorial complexity of this problem makes it  intractable to find exact solutions, except for very small systems. 
+%
+The idea of quantum computing originated from this computational challenge in simulating quantum-mechanics. 
+%
+We propose an end-to-end quantum chemistry pipeline based on the variational quantum eigensolver (VQE) algorithm and integrated with both HPC-based simulators and a trapped-ion quantum computer. 
+%
+ Our platform orchestrates hundreds of simulation jobs on compute resources to efficiently complete a set of \emph{ab initio} chemistry experiments with a wide range of parameterization. 
+%
+%We simulate several molecules both on a quantum simulator and a trapped-ion quantum computer. This includes a C$-$F bond-breaking experiment for trifluoroacetic acid (TFA), which is an abundant PFAS chemical. In the case of trapped-ion QPU calculations on IonQ Aria, near-quantitative (milli-Hartree) precision is obtained for the 11-qubit TFA case when used alongside simple, physically-inspired error mitigation approaches.
+
+Per- and poly-fluoroalkyl substances (PFAS) are a large family of human-made chemicals that pose a major environmental and health issue globally.
+Our simulations includes breaking a Carbon-Fluorine bond in trifluoroacetic acid (TFA), a common PFAS chemical.
+This is a common pathway towards destruction and removal of PFAS.
+%
+Molecules are modeled on both a quantum simulator and a trapped-ion quantum computer, specifically IonQ Aria. 
+%
+Using basic error mitigation techniques, the 11-qubit TFA model (56 entangling gates) on IonQ Aria yields near-quantitative results with milli-Hartree accuracy.
+%
+Our novel results show the current state and future projections for quantum computing in solving the electronic structure problem, push the boundaries for the VQE algorithm and quantum computers, and facilitates development of quantum chemistry workflows.  
+%
+\end{abstract}
+
+\keywords{Variational Quantum Eigensolver (VQE) \and molecular simulation \and scalability \and bond stretching \and PFAS}
+
+%%\newpage
+%%\tableofcontents
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newpage
+\section{Introduction}
+\label{sec:introduction_and_background}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%\subsection{PFAS}
+%\label{sec:pfas}
+Per- and poly-fluoroalkyl substances (PFAS) are a large family of human-made molecules that are extensively used for their water and oil repellent, heat resistant, and non-stick properties in areas such as clothing, adhesives, fire retardants, food packaging, cooking utensils, and paints.
+PFAS are highly resistant to bio-degradation, and have high mobility in water and soils. 
+PFAS can contaminate drinking water \cite{EUSPA2016} and bio-accumulate in wildlife.
+PFAS exposure has detrimental health impacts on humans including cancer, thyroid diseases, hormonal changes, and reduced vaccine response, among others \cite{PFAS2016,Looker2013}. 
+Therefore, remediation of PFAS from the ecosystem is crucial and has been widely studied both from experimental and computational/theoretical points of view \cite{DOMBROWSKI2018}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%\subsection{Computational chemistry challenges in PFAS}
+%\label{sec:computational_chemistry_challenges_in_pfas}
+Several techniques have been developed to physically remove PFAS from drinking water, for example, absorption of PFAS in active carbon, water filtration, or using ion exchange techniques\cite{RAHMAN2014,Kumarasamy2020,XIAO2017}. However, once the molecules are isolated, they must be still degraded and destroyed. 
+
+PFAS family presents an unusual thermal stability, mainly due to the large electro-negativity of fluorine, which forms strong C-F bonds. 
+These bonds result in high surface activity and thermal resistance, as well as resistance to many forms of physical, chemical, and biological degradation. 
+From chemical point of view, PFAS degradation presents a huge technical challenge, which depends on the type of PFAS, the length of the chains, and additional substituents within the compound. 
+As an example, Figure~\ref{fig:representative_structures_for_qpfas} illustrates perfluorocarbonylic acids, PFCAs (C$_n$F$_{2n+1}$-COO$^-$), and perfluorosulfonic acids, PFSAs (C$_n$F$_{2n+1}$-SO$_3^-$) which are less stable than their telomeric counterparts, TFCA (C$_n$F$_{2n+1}$-CH$_2$-CH$_2$-COO$^-$) and TFSA (C$_n$F$_{2n+1}$-CH$_2$-CH$_2$-SO$_3^-$) \cite{BENTHEL2019}.
+
+\begin{figure}[htb!]
+\centering
+\includegraphics[scale=0.4]{pfas_molecules.png}
+\caption{Representative structures of PFAS molecules that are common in the environment: PFCA (perfluorocarbonylic acid), PFSA (perfluorosulfonic acid), TFCA (fluorotelomer carboxylic acid) and TFSA (trifluoromethanesulfonic acid) with n=6; n indicating the variable length of C$_n$F$_{2n+1}$}
+\label{fig:representative_structures_for_qpfas}
+\end{figure}
+
+In the last few years, there has been significant development in PFAS destruction technologies. 
+Examples include wet oxidation using heat activated oxidants \cite{BRUTON2017,PARK2016} and ion exchange using plasma reactors \cite{SALEEM2020123031,SINGH202} among other methods. 
+Most of these techniques involve the use of strong oxidative species (mostly a variety of radicals) and/or reductive species (e.g. hydrated electron e$^{-}_{aq}$ produced by using UV light) \cite{liu2021}. 
+The main objective of such techniques is to degrade PFAS molecules into smaller and treatable units. 
+From the structural perspective, two main strategies can be considered: defluorination (dissociation of C-F bonds) and degradation of the backbone chain into smaller parts. However, these methods are even more challenging since C-F is among one of the strongest bonds in chemistry. Therefore, an attractive and potentially useful challenge is to computationally investigate PFAS degradation through defluorination and breaking C-F bonds.
+
+For this computational chemistry challenge, there is a large number of possible experiments involving the dissociation of a single fluorine atom depending on the size of the PFAS, the number of C-F bonds and their positions. 
+Computational coupled-cluster-based methods such as CCSD or CCSD(T) are preferable to achieve chemical accuracy, since these methods have been established as reliable and accurate for the computation of chemical energies.
+CCSD(T) is often referred to as the ``gold-standard'' of electronic structure. 
+However, these methods scale at $N^6$ and $N^7$ with the number of basis functions $N$, leading to high computational cost. 
+As the number of basis functions grows with the number of atoms in a molecule, the computational expense rapidly grows with atom count. 
+Hence, applying these high-accuracy methods to large molecules such as PFAS is impractical.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%\subsection{Scope and objectives in QPFAS}
+%\label{sec:scope_and_objectives_in_qpfas}
+In this project we focus on the molecular simulation and analysis of the electronic and chemical properties of PFAS-like molecular structures. 
+Currently, high-performance computing (HPC) models and tools are used for simulation and analysis of molecular structures and their electronic/chemical properties. However, current HPC simulations are computationally expensive and not particularly scalable, which limits the accuracy, size, and number of compounds subject to study. Approximations are necessary to reduce the computational cost and also to map molecular and electronic properties, which are inherently quantum, for execution on classical computation platforms.
+
+With the advent of quantum computing hardware and algorithms, there has been interest in applying quantum computational methods to the simulation and analysis of the electronic structure systems. 
+The scope of this project is to develop a high-performance hybrid quantum computational workflow with the aim of performing scalable and repeatable experiments using Variational Quantum Eigensolver (VQE) -based methods\cite{Peruzzo2014-xz, OMalley2016-ph, Colless2018-hi, McCaskey2019-gk, Nam2020-ct, Kandala2017-kr, Kandala2019-rz, Gao2019-pp, Rice2021-mn, Gao2021-zt, Zhao2023-um, Goings2023-qr}. 
+We demonstrate the development of an end-to-end workflow to run hybrid high-performance quantum computational chemistry experiments with a wide range of choices in the parameter space (e.g. molecule types, active spaces, qubit reduction methods, chemistry parameters, and VQE-related parameters).  
+This workflow can interface with quantum computing software simulators as well as quantum computing hardware. 
+The pipeline is used to compute the energies in a bond-breaking experiment for PFAS-related molecules both in simulations and on a real quantum hardware.
+
+The rest of this manuscript is organized as follows.
+Section 2 describes the implementation of the workflow in details.
+Section 3 contains the results, which are divided into two subsections: the results obtained on a quantum simulator, and the results from a real quantum computer. 
+Finally, we summarize the work in Section 4.    
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Implementation}
+\label{sec:workflow_and_implementation}
+%\ref{sec:computational_chemistry_challenges_in_pfas} and \ref{sec:scope_and_objectives_in_qpfas}
+%As outlined in the introduction, the goal is to understand the possible degradation pathways of PFAS, which can be very diverse and may involve anion exchanges, oxidation or/and reduction processes\cite{liu2021}. 
+As outlined in the introduction, the dissociation energy of C-F bonds is studied in this paper.
+Breaking a C-F bond is a fundamental step in the degradation process of PFAS.
+%
+To simulate bond dissociation, a target molecule is selected and a dictionary of geometries is generated.
+Then, the position of one of the atoms, usually the outermost (e.g. fluorine atom in TFA), is shifted in steps to simulate bond breaking and evaluate the energy surface at different distances.
+%
+The electronic structure problem for these geometries are first solved at the Hartree-Fock self-consistent field level. 
+From these results the one- and two-body electronic tensors are obtained to form the fermionic Hamiltonian, which are then solved using VQE to obtain an estimate of the ground state energy.
+ %
+The fermionic Hamiltonian must be mapped to qubit operations to be executed on a quantum hardware. 
+This transformation can be efficiently performed classically using, e.g., the Jordan-Wigner, Bravyi-Kitaev, and other transformations. 
+Once the Hamiltonian is represented by a set of qubit operations, they can be executed using VQE given a suitable trial circuit on a real quantum computing hardware or a software simulator.
+%
+In order to orchestrate many such experiments and run them on different backend systems (both quantum simulator and real quantum computer), the QPFAS workflow is developed, which is described in the following.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Workflow for scalable molecular simulation}
+\label{sec:workflow_for_scalable_molecular_simulation}
+QPFAS is a computational orchestration workflow that is built around the VQE algorithm, and can be executed on gate model quantum computing hardware as well as software simulators. 
+QPFAS is integrated and tested with multiple quantum simulators. 
+The main simulators results presented in this paper are from the QULACS \cite{QULACS} simulator.
+The results of the real quantum computer are obtained using the IonQ computer based on trapped ion technology \cite{ionq}. 
+%
+Figure~\ref{fig:workflow_steps} outlines the QPFAS workflow.
+The top row shows the parameters that are to be specified at each step, while different modules are described in the second row of the figure. 
+The workflow employs the Python package Tequila \cite{kottmann2021tequila} to create the quantum circuits and implement the VQE algorithm.
+
+\begin{figure}[htb!]
+  \centering
+  \includegraphics[width=0.9\textwidth]{Figure_2.png}
+  \caption{Scheme of the QPFAS calculation workflow. The parameters to be used in each stage are detailed in the upper part of the figure. The workflow steps are represented in boxes in the lower part of the figure. }
+  \label{fig:workflow_steps}
+\end{figure}
+
+In the first step of the QPFAS workflow, a molecule object was instantiated to store the molecule's geometry, multiplicity, charge, basis set, and active space. 
+This step provides the information required to perform classical chemistry calculations and fully specifies the chemistry problem. 
+Next, the molecule is transformed in \texttt{Tequila} format\cite{kottmann2021tequila} specifying the qubit transformation to be used. 
+Both objects (model formats) are used in step three to create the ansatz circuit and the qubit Hamiltonian. 
+After creating these two, it is possible to run VQE using a classic optimizer in the last step of the workflow, where the number of samples and the backend (quantum computing software simulator or hardware) need to be also specified as parameters. 
+
+
+The QPFAS workflow yields ground state energies of molecules. 
+These VQE-derived energies are benchmarked against those from classical methods such as Coupled Cluster Single-Double (CCSD) or Full Configuration Interaction (FCI) with Tequila. 
+Here, it is important to mention that certain choices of active space are not compatible with Tequila's classical solver, so in these cases the Python-based Simulations of Chemistry Framework (PySCF) \cite{sun2018pyscf} is used for the classical calculations.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection{VQE approaches in QPFAS}
+\label{sec:vqe_approaches}
+ VQE \cite{peruzzo2014variational} is a hybrid classical-quantum algorithm that is suited for noisy intermediate-scale quantum (NISQ) computing devices.
+It is an approximate method to solve optimization problems, more specifically the minimum eigenvalue problem. 
+Due to the large resource requirements of other quantum algorithms, such as quantum phase estimation,\cite{Goings2022-xb} for computational chemistry problems, VQE is likely to remain the \textit{de facto} method in this field for foreseeable future. 
+%
+ In this work, in addition to the standard VQE, ADAPT-VQE and VQE by tapering are also considered as they have certain advantages for computational chemistry problems.
+ The standard VQE and its variations are illustrated in Figure~\ref{fig:workflow_vqe_variations}, and desctibed in the following.
+
+\begin{figure}[!htb]
+  \centering
+  \begin{subfigure}[b]{0.4\textwidth}
+    \centering
+    \includegraphics[width=0.95\linewidth]{workflow_vqe.pdf}
+    \caption{}
+    \label{fig:workflow_vqe}
+  \end{subfigure}
+  \begin{subfigure}[b]{0.4\textwidth}
+    \centering
+    \includegraphics[width=0.9\linewidth]{workflow_vqe_adapt.pdf}
+    \caption{}
+    \label{fig:workflow_vqe_adapt}
+  \end{subfigure}
+  \begin{subfigure}[b]{0.15\textwidth}
+    \centering
+    \includegraphics[width=0.9\linewidth]{workflow_vqe_tapering.pdf}
+    \caption{}
+    \label{fig:workflow_vqe_tapering}
+  \end{subfigure}
+  \caption{ VQE enabled in PQFAS workflow: (a) Standard VQE, (b) ADAPT-VQE which grows one operator at a time in a manner set by the molecule being simulated, (c) VQE with tapering to find symmetries in the qubit Hamiltonian. Standard and ADAPT-VQE run a self-consistent loop placed inside the red box in the figure. }
+  \label{fig:workflow_vqe_variations}
+\end{figure}
+
+ \paragraph{Standard VQE algorithm} (Figure~\ref{fig:workflow_vqe}) 
+   VQE is based on the \emph{variational principle}, which states that the smallest valid energy solution for a state will always be an upper bound to the energy of the ground state. 
+   %
+   In the VQE algorithm, the molecular wave function is encoded as a parameterized circuit called the ansatz, $U(\theta)$.
+   A Hamiltonian, $H$, is transformed from fermionic operators to qubit operators. 
+   To find the ground-state energy, the parameters are iteratively updated to minimize the expectation value of the Hamiltonian \eqref{eqn:ground_state}, until convergence is reached.
+    \begin{equation}\label{eqn:ground_state}
+    E_\text{ground-state} = \min \langle 0| U(\theta)^\dagger H U(\theta) |0\rangle
+    \end{equation}
+    where $|0\rangle$ is the reference state the circuit acts upon usually the Hartree-Fock ground state of the system. 
+    To generate the molecular Hamiltonian, the geometry of the molecule and the basis set to be used must be specified, and the necessary integrals to be computed. 
+    The geometry of the molecules is stored in an \texttt{xyz} file that contains the specification and coordinates of each atom. %The choice of basis set impacts the accuracy of the calculation -- a more detailed basis set yields better estimate of the ground state energy, but will also require more qubits. \\
+    The second quantized Hamiltonian can then be written as:
+    \begin{equation}\label{eqn:second_quan}
+      H = h_0 + \sum_{ij} h_{ij} a_i^\dagger a_j + \sum_{ijkl} h_{ijkl} a_i^\dagger a_j^\dagger a_k a_l
+    \end{equation}
+    where $h_0$ is a constant, $h_{ij}$ and $h_{ijkl}$ are the single and two-body integrals respectively, and $a_i^\dagger$ is the creation operator for orbital $i$ and $a$ is the annihilation operator for orbital $i$. 
+    %
+    To implement the Hamiltonian on a quantum computing hardware or software simulator, the fermionic Hamiltonian \eqref{eqn:second_quan}, should be mapped to a qubit Hamiltonian.
+    This is done with both Jordan-Wigner and Bravyi-Kitaev transformations in the workflow.
+    
+  \paragraph{ADAPT-VQE algorithm} (Figure~\ref{fig:workflow_vqe_adapt})
+    While being based on the standard VQE algorithm, the ADAPT-VQE uses an adaptive ansatz as introduced in \cite{grimsley2019adaptive}. 
+    A single operator is added to the ansatz (which initially is the identity circuit) from a pool of candidate operators.
+    Operators are added until convergence is reached. 
+    Convergence is deemed as the gradient of energy with respect to the pool of operators. 
+    Each time an operator is added to the ansatz, the VQE algorithm is run to find the optimal parameters.
+    
+  \paragraph{VQE algorithm with tapering} (Figure~\ref{fig:workflow_vqe_tapering})
+    This variation uses the tapering algorithm \cite{bravyi2017tapering} to remove qubits before running the VQE. 
+    The tapering algorithm is based on finding symmetries in the qubit Hamiltonian, where symmetry is defined by terms that commute with the Hamiltonian. 
+    For each independent symmetry found, one qubit can be removed through a transformation of the Hamiltonian. 
+    %
+    While this method reduces the number of qubits used, there are two downsides to be considered. 
+    In this VQE variation the transformation of the Hamiltonian does not preserve the number of particles and thus only the hardware ansatz can be used as it is the only ansatz that does not conserve particle number. 
+    Additionally, when removing a qubit, it is essential to know what vector to project it into ($0$ or $1$). Thus, if $n$ qubits are removed, then the VQE must be run $2^n$ times, resulting in the lowest energy value being the final result for the ground state.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\subsubsection{Ansatz calculation methods in QPFAS}  
+\label{sec:ansatz_calculation_methods_in_qpfas}
+
+%In order to translate the classical variational algorithm into a problem to be run on a quantum computer, %we define a wave function as a series of quantum gates.  Deciding on an ansatz is difficult, because we %must propose the best approximation to the ground state
+
+In order to run VQE, it is necessary to define an ansatz.
+There are generally two paradigms for VQE ansatze design: a) chemistry-inspired ansatze which are designed to capture the form of the molecular electronic wave function, and b) hardware efficient ansatze (HEAs) which attempt to offer flexible and expressive circuits that are shallower and more efficient to run on noisy hardware.
+%
+Early demonstrations of VQE on quantum hardware utilized the unitary coupled cluster with singles and doubles (UCCSD) ansatz \cite{peruzzo2014variational, OMalley2016-ph, Colless2018-hi, McCaskey2019-gk, Nam2020-ct}. 
+Despite its success in treating strongly correlated systems, UCCSD becomes impractical on NISQ quantum computers due to its rapid increase in entangling gates. 
+Consequently, hardware efficient ansatze (HEAs) have gained attention for requiring significantly shallower circuits. 
+While HEAs have been used to simulate various molecules on superconducting quantum computers \cite{kandala2017hardware, Kandala2019-rz, Gao2019-pp, Rice2021-mn, Gao2021-zt}, HEAs struggle to deal with noise and the so-called barren plateaus in optimization \cite{McClean2018-ku}. 
+Moreover, they too are subject to the measurement bottleneck \cite{Gonthier2020-rh}.
+%
+To maximize efficiency while maintaining chemical fidelity, we use a modified ansatz derived from the UCCSD ansatz: the unitary pair CCD (pUCCD) ansatz \cite{Elfving2020-xf, Elfving2020-zx}. 
+
+In total, the QPFAS workflow allows for the use of five ansatz design methods.
+%
+Three of them are chemistry-inspired ansatze based on Unitary Coupled-Cluster Single and Double excitations and two are hardware efficient ansatze.
+These five ansatze well represent the current state of the art of VQE for chemistry problems at the time this project.
+%
+The available ansatze in QPFAS, including pUCCD, are explained in the following.
+%
+\begin{itemize}
+    \item \textbf{UCCSD and k-UpCCGSD}: These two ansatze are chemistry inspired. 
+    In UCCSD ansatz only single and double excitations are considered, which preserve the Hartree-Fock ground state. 
+    It is the original ansatz proposed for VQE in chemistry in 2014 \cite{peruzzo2014variational}. 
+    For k-UpCCGSD ansatz all single excitations are taken into account (even ones that destroy the Hartree Fock ground-state), but only double excitations that move a pair of electrons from one spatial orbital to another are allowed. 
+    This is a more efficient approximation to UCCSD, which has never been tested on a real quantum computer -- simulation only.
+    Both these ansatze are of the form, $U=e^{T-T^\dagger}$, where $T$ is an operator generating excitations, and contain a \textit{depth} parameter. In UCCSD this corresponds to the number of trotter steps, while in k-UpCCGSD the depth ($k$) is the number of times the set of excitations are repeated (with different angles each time).
+    
+    \item \textbf{pUCCD}: This is also a chemistry inspired ansatz derived from the UCCSD ansatz, but only contains double excitations \cite{Elfving2020-xf, Elfving2020-zx}. 
+    The pUCCD ansatz has several appealing characteristics for use on near-term hardware \cite{OBrien2022-aa}.
+    First, it allows for a hard-core boson representation and requires half the number of qubits compared to other UCC ansatze. 
+    Second, at most three circuits are needed for energy expectation value computation, eliminating the measurement bottleneck for this ansatz (measurement is $\mathcal{O}(1)$). 
+    Finally, it has entangling gate requirements that goes as $\mathcal{O}(N^2)$ and entangling gate depth that goes as $\mathcal{O}(N)$ \cite{Zhao2023-um}.
+
+
+    \item \textbf{``hardware'' and ``hardware conserving''}: These two ansatze consider quantum computing hardware. \textit{hardware} ansatz \cite{kandala2017hardware} and \textit{hardware conserving} ansatz \cite{barkoutsos2018quantum} both consist of repeating layers of rotation gates (acting on individual qubits) followed by an entangling layer.
+    In the case of \textit{hardware} ansatz the circuit acts on the null state (all qubits set to zero) and the entangling layer is a set of CNOT gates. 
+    The \textit{hardware conserving} ansatz acts on the Hartree-Fock ground state and the entangling layer is designed to conserve the number of particles.
+\end{itemize}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection{Orbital reduction methods in QPFAS}
+\label{sec:orbital_reduction_methods_in_qpfas}
+In quantum computer the number of qubits required to run a circuit is directly related with the number of spin orbitals of the problem. Hence, using a subset of the orbitals instead of the entire set requires a significantly fewer qubits for implementation. 
+The QPFAS workflow supports two automatic methods to find such a subset of orbitals: \textit{frozen core approximation} and \textit{Natural Orbital Occupation Numbers (NOONs)}.
+It is also possible to provide a manual input. 
+These are referred to as orbital reduction methods.
+%
+For background, the orbitals are categorized as \textit{occupied}, \textit{frozen}, or \textit{virtual}. 
+Usually, the inner occupied orbitals are called \textit{core orbitals}. 
+These can be assumed to be frozen, i.e., not participant in the excitations. 
+The unoccupied orbitals are called \textit{virtual}. 
+The remaining occupied orbitals and the virtual orbitals are referred to as the \textit{active set}. 
+Thus the Hamiltonian is expressed as
+\begin{equation}\label{eqn:hamiltonian}
+H = \sum_{i\in F}h_{ii}  + \sum_{ij \in A} \left( h_{ij}  + \sum_{k \in F} (h_{kijk} - h_{kikj}+h_{ikkj}-h_{ikjk})  \right) c_i^\dagger c_j
++ \sum_{ijkl \in A}h_{ijkl} c_i^\dagger c_j^\dagger c_k c_l 
+\end{equation}
+where $F$ is the set of frozen orbitals and $A$ is the active set.
+
+The \textit{frozen core approximation} treats the lowest energy orbitals as being occupied, assuming that the core electrons are not correlated. 
+The number of orbitals to freeze is determined based on the atomic species of the molecule\footnote{ORCA Input Library, Frozen core calculations. \url{https://sites.google.com/site/orcainputlibrary/frozen-core-calculations}}.   
+%
+For \textit{Natural Orbital Occupation Numbers (NOONs)}, the single particle density matrix, $\rho(x, y)$ is defined by the set of basis functions $\{\phi_i(x)\}$, given by
+\begin{equation}\label{eqn:density}
+     \rho(x, y) = \sum_{ij} \phi_i(x) \gamma_{ij} \phi_j(y)^*.
+\end{equation}    
+Since $\gamma_{ij}$ is a hermitian matrix we can diagonalize it, where the resulting diagonal matrix contains the NOONs. 
+For Hartree-Fock, the NOONs are either zero or one. 
+By computing the NOONs with a higher-order method (such as MP2) we get a non-trivial result. 
+If the NOONs for a given orbital is close to zero (or two) within a specified tolerance, then the orbital is considered to be unoccupied (doubly occupied).
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Experiments and results}
+\label{sec:experiments_and_results}
+
+Due to the limitations of quantum computing simulators and hardware,  we study the bond-breaking for smaller PFAS-like molecules suach as \ch{CH3F}.
+This lays the groundwork to study larger molecules with C-F bonds in the future. 
+Carrying out these experiments with QPFAS workflow allows integrating HPC models and IonQ real quantum hardware. 
+Another objective is to explore the current computational limits for quantum chemistry calculations using an end-to-end hybrid workflow.
+%
+Hence, the following experiments seek to explore three main characteristics: 
+\begin{itemize}
+    \item \textbf{Scalability} of the problem in terms of the size of the molecules;
+    \item \textbf{Functionality of the QPFAS workflow} with the largest bond-breaking experiment that can fit into our HPC or a real quantum computer;
+    \item \textbf{VQE accuracy} and its performance under a wide range of parameterizations. 
+\end{itemize}
+%
+The experiments executed on the HPC simulator serve to refine the parameters for running a bond-breaking experiments in the real quantum computer.
+%
+The experiment and the results are divided in two subsection: first, calculations in QULACS simulator on ICHEC HPC cluster, and second, calculations in the IonQ quantum computer.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Experiments using QULACS software simulator}
+\label{sec:experiments_using_quantum_computing_software_emulation}
+%As explained above, we need to fulfill these three main characteristics when running in the ICHEC HPC cluster. 
+The first part of the experimentation is focused on gaining knowledge on scalability and parameter optimization running calculations on a group of eleven molecules with increasing size. The second part is dedicated to explore energy dissociation only on \ch{F2} and \ch{CH3F}. 
+Then the bond stretching calculations of these two molecules are executed, as they are the biggest molecules we can execute in the ICHEC's HPC in a reasonable amount of time (less than 24 hours). \ch{F2} molecule is selected because it is one of the largest with an F-F bond that we could run on the quantum emulator.
+\ch{CH3F} is the largest molecule that can be executed with a C-F bond in the quantum emulator. 
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection{Scalability and parameterization study}
+\label{sec:results_from_quantum_computing_software_emulation}
+VQE is a heuristic quantum algorithm that scales exponentially when the number of variables of the problem increases.
+Hence, there is a practical hard limit on the problem size when executed on a classical quantum simulator.
+To avoid unbounded runtime of the problems on the simulator, a timeout limit of 24 hours is set in the executions. 
+All molecules/runs that exceed this timeout are excluded from the analysis of the results.
+
+First study is to explore the active space selection methods as a function of the size of the molecules, as presented in Figure~\ref{fig:comparison_of_active_space_methods}. 
+This shows the number of qubits needed to represent the problem and the number of terms in the Hamiltonian.
+The QULACS quantum circuit simulator runs on the Kay cluster\footnote{ICHEC HPC cluster, Kay. \url{https://www.ichec.ie/about/infrastructure/kay}} typically on a single high-memory node. 
+Hartree-Fock, Frozen Core and NOONs are selected as active space methods to to compare their error levels as a function of molecule size (Figure~\ref{fig:comparison_of_active_space_methods} (a)).
+For the NOONs method, the upper threshold parameter of 0.002 is selected based on experiments yielding errors within the acceptable range.
+
+%\paragraph{Results for Scalability}
+Figure~\ref{fig:comparison_of_active_space_methods} shows how the error (compared against classically-computed CCSD as a baseline), number of qubits and number of Hamiltonian terms vary with choice of active space. 
+In the top panel (a) compares the error levels to CCSD results as a function of molecule size.
+HF and NOONs errors scale with number of electrons while Frozen Core stay stable. 
+The middle panel (b) shows the number of qubits reduced by using the frozen core and NOONs approximations. 
+The bottom panel (c) show the impact on the number of terms in the Hamiltonian, \ch{CH3F} being the most impacted. 
+The hatching refers to tapering on top of the active space approximations.
+
+\begin{figure}[!htb]
+	\centering
+	\includegraphics[width=\textwidth]{cr_qubit_reduction_screen.png}
+	\caption{Comparison of three active space methods, HF in red, Frozen Core in orange and NOONs in green for (a) panel. Middle (b) and bottom (c) panels correspond to number of qubits and number of Hamiltonian terms as function of molecule size respectively. Blue bars refer to \textit{full} set of orbitals included in the calculation. The hatching refers to tapering on top of the active space
+approximations.}
+	\label{fig:comparison_of_active_space_methods}
+\end{figure}
+
+%In terms of scalability we performed a study on a list of molecules to explore VQE error, VQE %execution time and qubit number as functions of size molecule for a frozen core UCCDSD. This %study allow us understand ......
+%\begin{figure}[!htb]
+%\centering
+%\includegraphics[width=\textwidth]{frozen_core_uccsd.png}
+%\caption{Frozen core with UCCSD}
+%\label{fig:frozen_core_with_uccsd}
+%\end{figure}
+
+For a group of selected molecules (only five to simplify the visualization), Figure \ref{fig:qubit_number_active_orbitals} illustrates the VQE error in upper panel (a) and the VQE runtime in bottom panel (b) as a function of the number of active orbitals. 
+For these molecules we run experiments using three orbital reduction methods NOONs, Comb and Hartree-Fock. 
+%In both panels any abnormal behaviors are distinguished for the chosen molecules. 
+In average, the VQE time scales up when the number of active orbitals and the molecule size increase, as expected. 
+The results for all molecules tested is available on the QPFAS GitHub page\footnote{Qubit number scaling \url{https://github.com/ICHEC/QPFAS/blob/0.4.0-beta/py/examples/circuit_requirements/all_qubit_number_experiments.png}}.
+\begin{figure}[!htb]
+\centering
+\includegraphics[width=\textwidth]{qubit_number_experiments.png}
+\caption{Scaling up of the problem in terms of \textbf{number of orbitals}. Upper panel (a) shows VQE error for \ch{O2}, \ch{CO}, \ch{CH4}, \ch{F2} and \ch{CH3F} as a function of the number of active orbitals. VQE error is expressed in Hartrees (Ha) in left vertical axis and in kcal/mol in right vertical axe. Three reduction orbital methods where applied , NOONs, Comb and HF . Lower panel (b) is a plot of VQE time (logarithm scale) to show the scaling up in terms of active orbitals for the same group of molecules than upper panel}
+\label{fig:qubit_number_active_orbitals}
+\end{figure}
+
+For the same group of selected molecules as above, Figure \ref{fig:parameter_number_experiments} shows how the problem scales in terms of the number of parameters of the VQE ansatz for increasing active orbitals and molecule size. 
+The plot shows the ramp up in calculation time by increasing the VQE ansatz parameters and the size of the molecules, as expected.
+It also confirms that error levels can be systematically lowered by increasing the complexity of the VQE ansatz, which translates to increased computation times/resources.
+The results for all molecules tested is available on the QPFAS GitHub page. \footnote{Number of parameters scaling \url{https://github.com/ICHEC/QPFAS/blob/0.4.0-beta/py/examples/circuit_requirements/all_parameter_number_experiments.png}}.
+
+\begin{figure}[!htb]
+\centering
+\includegraphics[width=\textwidth]{parameter_number_experiments.png}
+\caption{Scaling up of the problem in terms of \textbf{ VQE ansatz parameters}. Upper panel (a) shows VQE error for \ch{O2}, \ch{CO}, \ch{CH4}, \ch{F2} and \ch{CH3F} as a function of VQE ansatz parameters. VQE error is expressed in Hartree(Ha) in left vertical axe and in kcal/mol in right vertical axe. Three reduction orbital methods where applied NOONs, Comb and HF. Lower panel (b) shows VQE time (logarithm scale) in terms of active orbitals for the same group of molecules than upper panel. The error levels can be systematically lowered by increasing the complexity of the VQE ansatz, which translates to increased computation times/resources.}
+\label{fig:parameter_number_experiments}
+\end{figure}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\paragraph{Results for parameter optimisation}
+
+Parameter optimization is a set of tests using \ch{H2} and \ch{HF} molecules to find best parameters of the QPFAS workflow for larger simulations such as \ch{CH3F} molecule. 
+%
+The studied parameters include a list of optimizers (refer to the figure in Github for details), the qubit transformations Jordan-Wigner and Bravyi-Kitaev, a the range of five ansatze, and different sample sizes.
+%
+We concluded that hardware ansatze are less performant than chemistry inspired ansatze. 
+In addition, the results show that the use of one transformation or the other does not privilege any optimizer. 
+However,  \textit{Powell} is the optimizer that presents the smallest error for kUpCCGSD, tapering and UCCSD in both transformations. 
+We also investigate the number of samples need to successfully run the VQE algorithm. This study allow us to identify the number of samples against final VQE energy for the \ch{H2} molecule. 
+ We run the workflow a total of five times to measure the variance of the results. 
+ It can be inferred from the results (refer to the figure in Github for details) that more than 10,000 samples must be used to achieve an error less than $0.001$ Ha.
+The results also indicate that the BFGS optimizer performs better than COBYLA in small sample sizes.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\paragraph{Results for bond stretching}
+
+Here we present the results on how well the VQE can describe the energy profile of a molecule when bonds are stretched and broken. 
+The previous experiments helped to select a set of optimal parameters to run the bond-breaking experiment.
+These experiment are done for \ch{F2} and \ch{CH3F} molecules as they can give us more information about the breakdown in PFAS substances regarding C-F and F-F bonds.
+%
+Standard VQE with UCCSD ansatz is used for \ch{F2}, and ADAPT-VQE with UCCSD is for \ch{CH3F}.
+ADAPT-VQE is the most performant ansatz at the time this computation is run. 
+To map spin operators onto fermionic operators we use Jordan-Wigner transformation for both molecules.
+
+Figure \ref{fig:f2_using_uccsd_and_bond_stretching} shows the dissociation curves of the \ch{F2} molecule as a function of bond distance. 
+The three curves of energy follow the same trend for lower bond distances, however HF shows higher energy values when the bond starts to be dissociated. 
+FCI produces the same results as HF. 
+The right vertical axe of the figure shows the VQE error, which reaches its maximum value when the molecule is in the dissociation stage.  
+The error is quite small during all the calculation steps.
+
+\begin{figure}[!htb]
+\centering
+\includegraphics[width=\textwidth]{bond_stretching_F2.png}
+\caption{Energy as a function of bond stretching for \ch{F2} molecule. Three methods are calculated, blue dotted line corresponds to FCI, dashed black line to HF and VQE standard UCCSD with Jordan-Wigner transformation in orange dot points and full line. FCI and HF are superposed. Left vertical axe corresponds to energy values expressed in Hartree(Ha), right vertical axe corresponds to error of VQE calculation expressed in Ha units, the values of computed VQE error are plotted with dashed blue line and dot points. The bond distance in horizontal axe is in Angstrom(A).}
+\label{fig:f2_using_uccsd_and_bond_stretching}
+\end{figure}
+
+Figure \ref{fig:ch3f_using_adapt_vqe_uccsd_and_bond_stretching} shows the bond dissociation curve for \ch{CH3F} by stretching the C-F bond. The energy from HF is above the VQE result during the entire dissociation process, which becomes much more significant when the C-F bond is completely broken. 
+However, FCI energy remains below the energy values obtained with ADAPT-VQE. 
+For \ch{CH3F} we observe that the VQE error is maximum at the ground state energy unlike what is observed for \ch{F2}. 
+Even if the error is quite small during all the calculations in both molecules, we can observe that the error is two orders of magnitude smaller for \ch{F2}.
+%
+The results show that VQE can capture correlations and provide accuracy beyond HF, especially for a bond-breaking experiment. 
+Considering that FCI is not an scalable approach by any means, this proves VQE as a valid alternative for post-HF quantum chemistry calculation.
+This is specially important due to the suitability of VQE for quantum computing technology, as explored in the next subsection.
+
+\begin{figure}[!htb]
+\centering
+\includegraphics[width=\textwidth]{bond_stretching_CH3F.png}
+\caption{\ch{CH3F} using ADAPT-VQE, JW transformer, UCCSD and bond stretching . Energy as a function of bond stretching for \ch{CH3F} molecule. Three methods are calculated, blue dotted line corresponds to FCI, dashed black line to HF and ADAPT-VQE UCCSD with Jordan-Wigner transformation in orange dot points and full line. Left vertical axe corresponds to energy values expressed in Hartree (Ha), right vertical axe corresponds to error of VQE calculation expressed in Ha units, the values of computed VQE error are plotted with dashed blue line and dot points. The bond distance in horizontal axe is in Angstrom(A).}
+\label{fig:ch3f_using_adapt_vqe_uccsd_and_bond_stretching}
+\end{figure}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Experiments using IonQ's Aria trapped-ion quantum computer}
+\label{sec:computational_chemistry_challenges_in_pfas}
+
+A key objective of this work is to run experiments on currently available quantum processing unit (QPU) devices, while looking ahead to advances in quantum hardware that will enable the simulation of larger  PFAS-like molecules. 
+%
+The IonQ Aria quantum computer is integrated in the QPFAS workflow as the quantum hardware where the end-to-end process can be executed. 
+%
+The integration allows us to run shallower circuits with higher fidelity, as a result of the accuracy and all-to-all connectivity of the trapped-ion architecture.
+Hence, the results are less affected by the noise in quantum computing devices. 
+%
+%Moreover, we want to fulfill the goals commented in Section \ref{sec:experiments_and_results} with this hardware. 
+Given the capabilities of the current quantum hardware, we tighten our focus to evaluating the scalability of the QPFAS workflow running the C-F bond dissociation on a small PFAS-mimic molecule (\ch{CH3F}). 
+%
+For this experiment, we do not consider the convergence behaviour of the pUCCD ansatz and instead obtain the classically-optimized parameters for the VQE algorithm. 
+This is a common approach on VQE studies both on trapped-ion\cite{Khan2022-cu, Zhao2023-um} and superconducting devices \cite{OBrien2022-aa}.
+VQE’s flexibility in circuit design allows fine tuning based on quantum gate fidelity, number of qubits, and desired accuracy, making it well-suited for the NISQ era.
+However, running shallower circuits in VQE comes with its costs: predicted energy remains approximate, and many more measurements are required. 
+
+
+At the time the simulations were performed (late 2022) IonQ had two publicly available quantum computers to run the experiments proposed in this work; an 11-qubit trapped-ion QPU (Harmony) and a 25-qubit trapped-ion QPU named Aria. 
+%
+As Aria's gate fidelities are significantly higher than the previous generation (Harmony) and it has sufficient qubit counts to simulate PFAS-like molecules, we decided to perform the experiments on the Aria QPU in order to achieve one of the largest quantum chemistry simulations on real quantum hardware at the time. 
+
+As outlined in previous sections, the C-F bond is one of the strongest bonds in chemistry. Thus, we evaluate PFAS-like molecules to break the C-F bond of them. 
+The \ch{CH3F} molecule is chosen as the largest molecule for the experiments. 
+Hence, we carry out the next two experiments on the quantum computer Aria to meet the objectives of the study:
+%
+\begin{enumerate}
+
+    \item \textbf{\ch{CH3F} equilibrium geometry}: we choose the equilibrium geometry of the \ch{CH3F} molecule to calculate its ground state. 
+    Since a sull VQE algorithm would require a lot of computational time being executed in a real quantum hardware, we perform most of the VQE iterations using IonQ's cloud statevector simulator\cite{noauthor_undated-uy} (to obtain the values of the optimized parameters of the ansatz).
+    Then, we execute the final energy evaluation using the IonQ Aria quantum computer.
+    \item \textbf{\ch{CH3F} stretched geometry}: we set another experiment around the C-F bond breaking of the \ch{CH3F} molecule. For this experiment, a geometry of the molecule is defined further away from the equilibrium geometry, trying to simulate how the stretch would be. 
+    Similar to the above case, we execute almost all the iterations of the VQE in the IonQ statevector simulator, then the final energy evaluation is done using IonQ Aria.
+\end{enumerate}
+
+% \textbf{COMMENT:} where do we include the geometry files of \ch{CH3F} molecules chosen?
+
+%All 3 experiments used the same workflow features:
+These three experiments are performed under the same parameterization of the QPFAS workflow, which is:
+\begin{itemize}
+    \item \textbf{Basis set}: STO-3G basis set is used to create the QPFAS molecule.
+    %\item \textbf{Active space}: the \textit{frozen core} approximation is used to create the QPFAS molecule. In \ch{H2} molecule case, this can be neglected, leaving the molecule as it is. But in case of \ch{CH3F} molecule, it reduces the number of qubits on 2, leaving the number of active orbitals on 11.
+    \item \textbf{Active space}: the \textit{frozen core} approximation is used to create the QPFAS molecule. In case of the \ch{CH3F} molecule, it reduces the number of qubits by 2, leaving the number of active orbitals on 11.
+    \item \textbf{Transformation}: Jordan-Wigner transformation is used to create the qubit Hamiltonian.
+    \item \textbf{Ansatz}: the pUCCD ansatz is used as it is an efficient shallow ansatz, and has shown high-performance in recent quantum experiments both at Google\cite{OBrien2022-aa} and IonQ\cite{Zhao2023-um}. 
+    %It leaves the \ch{H2} molecule with 2 qubits and 1 parameters to optimize, and the \ch{CH3F} molecule with 13 qubits and 36 parameters to optimize.
+    In the pUCCD ansatz, the \ch{CH3F} molecule has 11 qubits and 28 variational parameters after freezing the core electrons, with no more than 253 single qubit gates and 56 entangling gates.
+    %\item \textbf{Optimizer}: COBYLA optimizer is used for the VQE \ch{H2} performance. The \ch{CH3F} molecule is pre-optimized classically, with energy evaluation being performed on the QPU only.
+\end{itemize}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsubsection{Results from IonQ quantum computer and error mitigation}
+\label{sec:results_from_ionq_quantum_computer}
+%The results of the experiments will be shown in the following plots:
+
+%\begin{figure}[!htb]
+%\centering
+%\includegraphics[width=\textwidth]{vqe_h2_energy.png}
+%\caption{\ch{H2} energy accuracy using VQE and pUCCD ansatz}
+%\label{fig:vqe_h2_energy_ionq}
+%\end{figure}
+
+%\begin{figure}[!htb]
+%\centering
+%\includegraphics[width=\textwidth]{vqe_h2_execution_time.png}
+%\caption{\ch{H2} execution time (ms) using VQE and pUCCD ansatz}
+%\label{fig:vqe_h2_execution_time_ionq}
+%\end{figure}
+
+
+\begin{table}[!htb]
+\caption{\ch{CH3F} energy of equilibrium geometry}
+\centering
+\begin{tabular}{lrrrrrr}
+\hline
+                               & \multicolumn{5}{c}{threshold + symmetry post-selection}        & \multicolumn{1}{l}{} \\ \hline
+Raw energy (Hartree)           & 0.0\%      & 0.5\%      & 1.0\%      & 1.5\%      & 2.0\%      & exact                \\ \hline
+\multicolumn{1}{r}{-135.74352} & -136.54827 & -136.76696 & -136.85525 & -137.14006 & -137.19404 & -137.19512           \\ \hline
+\end{tabular}\label{tab:ch3f_equilibrium_energy}
+\end{table}
+
+\begin{table}[!htb]
+\caption{\ch{CH3F} energy of stretched geometry}
+\centering
+\begin{tabular}{lrrrrrr}
+\hline
+                               & \multicolumn{5}{c}{threshold + symmetry post-selection}        & \multicolumn{1}{l}{} \\ \hline
+Raw energy (Hartree)           & 0.0\%      & 0.5\%      & 1.0\%      & 1.5\%      & 2.0\%      & exact                \\ \hline
+\multicolumn{1}{r}{-136.11887} & -136.68776 & -136.84109 & -136.85204 & -137.06390 & -137.06390 &   -137.11248    \\ \hline
+\end{tabular}\label{tab:ch3f_stretched_energy}
+\end{table}
+% \subsubsection{Noise mitigation}
+Working in the noisy intermediate-scale quantum (NISQ) era, the results are subject to errors. 
+For VQE, where the expectation value of an electronic Hamiltonian is to be estimated to high degrees of precision, noise can significantly impact the computed results \cite{peruzzo2014variational, OMalley2016-ph, Colless2018-hi, McCaskey2019-gk, Nam2020-ct, kandala2017hardware, Kandala2019-rz, Gao2019-pp, Rice2021-mn, Gao2021-zt, Zhao2023-um}. Although the purpose of this work is not to showcase error mitigation protocols, it can be seen from the raw data that the stretched and equilibrium geometries are in qualitative disagreement: the stretched geometry is \emph{lower} in energy than the equilibrium geometry, which is incorrect both theoretically and physically. 
+To mitigate this discrepancy and also to show a simple path to recovering near-ideal results, we exploit two symmetries of the chemical problem to mitigate the impact of noise on the results.
+
+The first method we use is symmetry post-selection for the $\langle Z \rangle$-basis measurements \cite{Bonet-Monroig2018-xa}. 
+Given the Jordan-Wigner encoding and the hard-core bosonic approximation inherent in pUCCD, the Hamming weight of all symmetry-allowed bitstrings (output states) corresponds to the number of electron pairs. 
+Any output bitstring that deviates from the ideal Hamming weight can be discarded, as it can only arise in error due to noise. Once the erroneous bitstrings are discarded, the symmetry-corrected histogram may be $L_1$-renormalized. Following this, we can see in Tables~\ref{tab:ch3f_equilibrium_energy} and \ref{tab:ch3f_stretched_energy} that from symmetry post-selection alone, a reduction in error on the order of 250-500 mHartree can be obtained. 
+Despite this massive improvement in accuracy, however, symmetry post-selection is not sufficient in this case to fix the qualitative discrepancy between the energy ordering of the two \ch{CH3F} geometries.
+
+The second error-mitigation technique is inspired by the fact that by setting all variational parameters to zero, the Hartree-Fock energy---which is efficiently known classically---can be computed for a given (noisy) circuit. 
+Moreover, in the $\langle Z \rangle$-basis, the ideal output corresponds to one and only one bit-string, corresponding to the state preparation circuit. 
+Hence, by learning the ideal output for the quantum circuit, the empirical impact of noise can be estimated as the proportion of the output that deviate from the ideal \cite{Urbanek2021-aw}. 
+In analogy with other signal processing techniques, such as amplitude-limiting, clipping, and threshold-based peak detection, we discard small states that cannot be reliably distinguished from noise. 
+A similar approach is described in Ref ~\cite{Montanaro2021-yv}. Therefore, applying different truncation thresholds to the Hartree-Fock states (Fig. ~\ref{fig:hartree-fock_ch3f_noise_mitigation}) we see that discarding states with probability lower than 1.5\% yields a good balance between removing noise and (potentially) discarding signal. Since the circuits and hardware are the same (differing only in the value of the variational parameters) estimating the noise floor from the Hartree-Fock outputs can be applied to the optimized circuit, where the output is not in general known \emph{a priori}. 
+The impact of different noise-floor thresholds on the $\langle Z \rangle$-basis can be observed in Fig.~\ref{fig:puccd_ch3f_noise_mitigation} as well as in Tables ~\ref{tab:ch3f_equilibrium_energy} and \ref{tab:ch3f_stretched_energy}. It can be seen that the empirically-determined threshold of discarding states below 1.5\% is sufficient to restore the qualitative correctness of the computed results on quantum hardware, as well as provide near-exact quantitative accuracy. 
+This method of truncation applies only to the $\langle Z \rangle$-basis measurements, because the ideal output is a single bitstring. 
+The $\langle X \rangle$- and $\langle Y \rangle$-basis measurements are uniformly distributed in the Hartree-Fock case, preventing this type of noise mitigation.
+
+To further improve the results, more advanced noise mitigation techniques could be used, as this is an active and ongoing area of research \cite{Bonet-Monroig2018-xa,Montanaro2021-yv,Bennewitz2022-fo,Quek2022-ly,Kandala2019-rz,OBrien2022-aa,Weber2021-eg}. 
+However, by using simple noise mitigation methods, we show here that it is possible to deliver quantum value on today's NISQ devices.
+
+\begin{figure}[!htb]
+\centering
+\includegraphics[width=\textwidth]{puccd_ch3f_noise_mitigation.png}
+\caption{Results of thresholding-based noise mitigation and symmetry post-selection on the $\langle Z \rangle$-basis measurements for (a) equilibrium and (b) stretched \ch{CH3F} geometries with optimized pUCCD parameters. Histogram bitstrings with probability less than the threshold value are discarded, along with bitstrings that are known to be wrong by symmetry (e.g. not particle conserving). The histograms are then $L_1$-renormalized. From the known Hartree-Fock results in Fig.~\ref{fig:hartree-fock_ch3f_noise_mitigation}, we can determine that the empirically optimal noise-floor threshold is at probabilities $\leq 1.5\%$. Error bars correspond to 2$\sigma$, where $\sigma$ is the standard error of the estimated expectation values. }
+\label{fig:puccd_ch3f_noise_mitigation}
+\end{figure}
+
+\begin{figure}[!htb]
+\centering
+\includegraphics[width=\textwidth]{hartree-fock_ch3f_noise_mitigation.png}
+\caption{Results of thresholding-based noise mitigation and symmetry post-selection on the $\langle Z \rangle$-basis measurements for (a) equilibrium and (b) stretched \ch{CH3F} geometries with Hartree-Fock parameters. Histogram bitstrings with probability less than the threshold value are discarded, along with bitstrings that are known to be wrong by symmetry (e.g. not particle conserving). The histograms are then 1-norm renormalized. Because the Hartree-Fock energy is efficiently and exactly known, and moreover the circuit topology is identical to the optimized pUCCD case, the Hartree-Fock hardware experiments allow us to estimate the noise floor, which can then be applied to identical circuits where the energy is not \emph{a priori} known. Error bars correspond to 2$\sigma$, where $\sigma$ is the standard error of the estimated expectation values.}
+\label{fig:hartree-fock_ch3f_noise_mitigation}
+\end{figure}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Conclusions}
+\label{sec:conclusions_and_actions}
+
+Remediation of global PFAS pollution is a an active research topic that aims at finding new mechanisms to destroy these substances. 
+A major pathway for PFAS destruction is breaking carbon-fluorine bonds.
+Computational simulating of this process can speed-up the research towards finding optimal processes and catalysts. 
+Solving the electronic Schrodinger problem is at the core of computational chemistry, which has always been a technical challenge due to its exponential complexity.
+The original idea of quantum computing came from this need for simulating nature at quantum level. 
+%
+In this article, we proposed the QPFAS workflow, a hybrid quantum-classical  workflow for end-to-end chemistry simulation based on VQE algorithm.
+% 
+The QPFAS workflow allows flexible definition of many experiments, including bond-breaking calculations, and orchestrates the execution of sub-tasks on both HPC-based simulators and quantum computers. 
+%
+
+We completed simulation experiments on a group of molecules to understand how the VQE algorithm scales in terms of molecule size, number of active orbitals, and optimization parameters. 
+Two molecules that approach PFAS substances were identified, \ch{F2} and  \ch{CH3F}, with which breaking-bond simulation experiments have been carried out on a quantum computing simulator, reaching the limits of classical computing at ICHEC's HPC system.
+%
+The results on quantum simulators were consistent with the expected theoretical analysis, and helped to better understand the scalability and accuracy of the VQE algorithm. 
+They provided important understanding on how to adjust the parameters and port the calculations to a real quantum computer.
+
+Moreover, we studied the bond breaking of \ch{CH3F} molecule with IonQ's trapped-ion quantum computer.
+To address the limitations of noisy quantum computing technology, we introduced two error mitigation techniques: (a) the symmetry post-selection for the ⟨Z⟩-basis measurements, and (b) correcting the error bias by calculating the classically-known Hartree-Fock energy in the noisy device.
+%
+This error mitigation approach returned near-quantitative results, with the \ch{CH3F} equilibrium energy at milli-Hartree precision with the expected result. The accuracy of the results obtained for the \ch{CH3F} molecule is unprecedented on a quantum computer for any bond-breaking experiment of a comparable size. 
+
+The creation of the QPFAS workflow allowed the hybrid study of the bond dissociation problem with great flexibility in parameterization and orchestration of large number of parallel tasks. 
+This enabled us to optimize the quantum computer resources by selecting the most efficient parameters, leading to one of the largest-ever molecules studied on computer computer.
+%
+The workflow can be used to conduct a wide range of computational chemistry experiments, and further develop the VQE algorithm for quantum computers. 
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section*{Acknowledgments}
+This project was supported in part by Enterprise Ireland Innovation Partnership Programme (IP/2019/0835) and EuroCC in Ireland (grant agreement no. 951732).
+
+% Bibliography
+% \bibliographystyle{IEEEtranN}  
+% \bibliography{references, jjgoings_qpfas}  
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+% Generated by IEEEtranN.bst, version: 1.14 (2015/08/26)
+\begin{thebibliography}{48}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{#1}
+\csname url@samestyle\endcsname
+\providecommand{\newblock}{\relax}
+\providecommand{\bibinfo}[2]{#2}
+\providecommand{\BIBentrySTDinterwordspacing}{\spaceskip=0pt\relax}
+\providecommand{\BIBentryALTinterwordstretchfactor}{4}
+\providecommand{\BIBentryALTinterwordspacing}{\spaceskip=\fontdimen2\font plus
+\BIBentryALTinterwordstretchfactor\fontdimen3\font minus
+  \fontdimen4\font\relax}
+\providecommand{\BIBforeignlanguage}[2]{{%
+\expandafter\ifx\csname l@#1\endcsname\relax
+\typeout{** WARNING: IEEEtranN.bst: No hyphenation pattern has been}%
+\typeout{** loaded for the language `#1'. Using the pattern for}%
+\typeout{** the default language instead.}%
+\else
+\language=\csname l@#1\endcsname
+\fi
+#2}}
+\providecommand{\BIBdecl}{\relax}
+\BIBdecl
+
+\bibitem[Agency(2016)]{EUSPA2016}
+\BIBentryALTinterwordspacing
+E.~U. S.~P. Agency, ``Lifetime health advisories and health effects support
+  documents for perfluorooctanoic acid and perfluorooctane sulfonate.''
+  \emph{Fed. Reg.}, pp. 33\,250--33\,251, 2016. [Online]. Available:
+  \url{https://www.federalregister.gov/documents/2016/05/25/2016-12361/lifetime-health-advisories-and-health-effects-support-documents-for-perfluorooctanoic-acid-and}
+\BIBentrySTDinterwordspacing
+
+\bibitem[Grandjean et~al.(2017)Grandjean, Heilmann, Weihe, Nielsen, Mogensen,
+  Timmermann, and Budtz-Jorgensen]{PFAS2016}
+\BIBentryALTinterwordspacing
+P.~Grandjean, C.~Heilmann, P.~Weihe \emph{et~al.}, ``Estimated exposures to
+  perfluorinated compounds in infancy predict attenuated vaccine antibody
+  concentrations at age 5-years,'' \emph{Journal of Immunotoxicology}, vol.~14,
+  no.~1, pp. 188--195, 2017, pMID: 28805477. [Online]. Available:
+  \url{https://doi.org/10.1080/1547691X.2017.1360968}
+\BIBentrySTDinterwordspacing
+
+\bibitem[Looker et~al.(2013)Looker, Luster, Calafat, Johnson, Burleson,
+  Burleson, and Fletcher]{Looker2013}
+\BIBentryALTinterwordspacing
+C.~Looker, M.~I. Luster, A.~M. Calafat \emph{et~al.}, ``{Influenza Vaccine
+  Response in Adults Exposed to Perfluorooctanoate and
+  Perfluorooctanesulfonate},'' \emph{Toxicological Sciences}, vol. 138, no.~1,
+  pp. 76--88, 11 2013. [Online]. Available:
+  \url{https://doi.org/10.1093/toxsci/kft269}
+\BIBentrySTDinterwordspacing
+
+\bibitem[Dombrowski et~al.(2018)Dombrowski, Kakarla, Caldicott, Chin, Sadeghi,
+  Bogdan, Barajas-Rodriguez, and Chiang]{DOMBROWSKI2018}
+\BIBentryALTinterwordspacing
+P.~M. Dombrowski, P.~Kakarla, W.~Caldicott \emph{et~al.}, ``Technology review
+  and evaluation of different chemical oxidation conditions on treatability of
+  pfas,'' \emph{Remediation Journal}, vol.~28, no.~2, pp. 135--150, 2018.
+  [Online]. Available:
+  \url{https://onlinelibrary.wiley.com/doi/abs/10.1002/rem.21555}
+\BIBentrySTDinterwordspacing
+
+\bibitem[Rahman et~al.(2014)Rahman, Peldszus, and Anderson]{RAHMAN2014}
+\BIBentryALTinterwordspacing
+M.~F. Rahman, S.~Peldszus, and W.~B. Anderson, ``Behaviour and fate of
+  perfluoroalkyl and polyfluoroalkyl substances (pfass) in drinking water
+  treatment: A review,'' \emph{Water Research}, vol.~50, pp. 318--340, 2014.
+  [Online]. Available:
+  \url{https://www.sciencedirect.com/science/article/pii/S0043135413008518}
+\BIBentrySTDinterwordspacing
+
+\bibitem[Kumarasamy et~al.(2020)Kumarasamy, Manning, Collins, Coronell, and
+  Leibfarth]{Kumarasamy2020}
+\BIBentryALTinterwordspacing
+E.~Kumarasamy, I.~M. Manning, L.~B. Collins \emph{et~al.}, ``Ionic fluorogels
+  for remediation of per- and polyfluorinated alkyl substances from water,''
+  \emph{ACS Central Science}, vol.~6, no.~4, pp. 487--492, 2020. [Online].
+  Available: \url{https://doi.org/10.1021/acscentsci.9b01224}
+\BIBentrySTDinterwordspacing
+
+\bibitem[Xiao et~al.(2017)Xiao, Ulrich, Chen, and Higgins]{XIAO2017}
+\BIBentryALTinterwordspacing
+X.~Xiao, B.~A. Ulrich, B.~Chen, and C.~P. Higgins, ``Sorption of poly- and
+  perfluoroalkyl substances (pfass) relevant to aqueous film-forming foam
+  (afff)-impacted groundwater by biochars and activated carbon,''
+  \emph{Environmental Science \& Technology}, vol.~51, no.~11, pp. 6342--6351,
+  2017, pMID: 28582977. [Online]. Available:
+  \url{https://doi.org/10.1021/acs.est.7b00970}
+\BIBentrySTDinterwordspacing
+
+\bibitem[Bentel et~al.(2019)Bentel, Yu, Xu, Li, Wong, Men, and
+  Liu]{BENTHEL2019}
+\BIBentryALTinterwordspacing
+M.~J. Bentel, Y.~Yu, L.~Xu \emph{et~al.}, ``Defluorination of per- and
+  polyfluoroalkyl substances (pfass) with hydrated electrons: Structural
+  dependence and implications to pfas remediation and management,''
+  \emph{Environmental Science \& Technology}, vol.~53, no.~7, pp. 3718--3728,
+  2019, pMID: 30874441. [Online]. Available:
+  \url{https://doi.org/10.1021/acs.est.8b06648}
+\BIBentrySTDinterwordspacing
+
+\bibitem[Bruton and Sedlak(2017)]{BRUTON2017}
+T.~A. Bruton and D.~L. Sedlak, ``Treatment of aqueous film-forming foam by
+  heat-activated persulfate under conditions representative of in situ chemical
+  oxidation,'' \emph{Environmental Science \& Technology}, vol.~51, no.~23, pp.
+  13\,878--13\,885, 2017, pMID: 29164864.
+
+\bibitem[Park et~al.(2016)Park, Lee, Medina, Zull, and Waisner]{PARK2016}
+\BIBentryALTinterwordspacing
+S.~Park, L.~S. Lee, V.~F. Medina \emph{et~al.}, ``Heat-activated persulfate
+  oxidation of pfoa, 6:2 fluorotelomer sulfonate, and pfos under conditions
+  suitable for in-situ groundwater remediation,'' \emph{Chemosphere}, vol. 145,
+  pp. 376--383, 2016. [Online]. Available:
+  \url{https://www.sciencedirect.com/science/article/pii/S0045653515304288}
+\BIBentrySTDinterwordspacing
+
+\bibitem[Saleem et~al.(2020)Saleem, Biondo, Sretenovia, Tomei, Magarotto,
+  Pavarin, Marotta, and Paradisi]{SALEEM2020123031}
+\BIBentryALTinterwordspacing
+M.~Saleem, O.~Biondo, G.~Sretenovia \emph{et~al.}, ``Comparative performance
+  assessment of plasma reactors for the treatment of pfoa; reactor design,
+  kinetics, mineralization and energy yield,'' \emph{Chemical Engineering
+  Journal}, vol. 382, p. 123031, 2020. [Online]. Available:
+  \url{https://www.sciencedirect.com/science/article/pii/S138589471932443X}
+\BIBentrySTDinterwordspacing
+
+\bibitem[Singh et~al.(2020)Singh, Multari, Nau-Hix, Woodard, Nickelsen,
+  Mededovic~Thagard, and Holsen]{SINGH202}
+R.~K. Singh, N.~Multari, C.~Nau-Hix \emph{et~al.}, ``Removal of poly- and
+  per-fluorinated compounds from ion exchange regenerant still bottom samples
+  in a plasma reactor,'' \emph{Environmental Science \& Technology}, vol.~54,
+  no.~21, pp. 13\,973--13\,980, 2020, pMID: 33103418.
+
+\bibitem[Liu et~al.(2021)Liu, Bentel, Yu, Ren, Gao, Pulikkal, Sun, Men, and
+  Liu]{liu2021}
+Z.~Liu, M.~J. Bentel, Y.~Yu \emph{et~al.}, ``Near-quantitative defluorination
+  of perfluorinated and fluorotelomer carboxylates and sulfonates with
+  integrated oxidation and reduction,'' \emph{Environmental Science \&
+  Technology}, vol.~55, no.~10, pp. 7052--7062, 2021, pMID: 33950686.
+
+\bibitem[Peruzzo et~al.(2014{\natexlab{a}})Peruzzo, McClean, Shadbolt, Yung,
+  Zhou, Love, Aspuru-Guzik, and O'Brien]{Peruzzo2014-xz}
+A.~Peruzzo, J.~McClean, P.~Shadbolt \emph{et~al.}, ``\BIBforeignlanguage{en}{A
+  variational eigenvalue solver on a photonic quantum processor},''
+  \emph{\BIBforeignlanguage{en}{Nat. Commun.}}, vol.~5, p. 4213, Jul. 2014.
+
+\bibitem[O'Malley et~al.(2016)O'Malley, Babbush, Kivlichan, Romero, McClean,
+  Barends, Kelly, Roushan, Tranter, Ding, Campbell, Chen, Chen, Chiaro,
+  Dunsworth, Fowler, Jeffrey, Lucero, Megrant, Mutus, Neeley, Neill, Quintana,
+  Sank, Vainsencher, Wenner, White, Coveney, Love, Neven, Aspuru-Guzik, and
+  Martinis]{OMalley2016-ph}
+P.~J.~J. O'Malley, R.~Babbush, I.~D. Kivlichan \emph{et~al.}, ``Scalable
+  quantum simulation of molecular energies,'' \emph{Phys. Rev. X}, vol.~6,
+  no.~3, p. 031007, Jul. 2016.
+
+\bibitem[Colless et~al.(2018)Colless, Ramasesh, Dahlen, Blok, Kimchi-Schwartz,
+  McClean, Carter, de~Jong, and Siddiqi]{Colless2018-hi}
+J.~I. Colless, V.~V. Ramasesh, D.~Dahlen \emph{et~al.}, ``Computation of
+  molecular spectra on a quantum processor with an {Error-Resilient}
+  algorithm,'' \emph{Phys. Rev. X}, vol.~8, no.~1, p. 011021, Feb. 2018.
+
+\bibitem[McCaskey et~al.(2019)McCaskey, Parks, Jakowski, Moore, Morris, Humble,
+  and Pooser]{McCaskey2019-gk}
+A.~J. McCaskey, Z.~P. Parks, J.~Jakowski \emph{et~al.},
+  ``\BIBforeignlanguage{en}{Quantum chemistry as a benchmark for near-term
+  quantum computers},'' \emph{\BIBforeignlanguage{en}{npj Quantum
+  Information}}, vol.~5, no.~1, pp. 1--8, Nov. 2019.
+
+\bibitem[Nam et~al.(2020)Nam, Chen, Pisenti, Wright, Delaney, Maslov, Brown,
+  Allen, Amini, Apisdorf, Beck, Blinov, Chaplin, Chmielewski, Collins, Debnath,
+  Hudek, Ducore, Keesan, Kreikemeier, Mizrahi, Solomon, Williams, Wong-Campos,
+  Moehring, Monroe, and Kim]{Nam2020-ct}
+Y.~Nam, J.-S. Chen, N.~C. Pisenti \emph{et~al.},
+  ``\BIBforeignlanguage{en}{Ground-state energy estimation of the water
+  molecule on a trapped-ion quantum computer},''
+  \emph{\BIBforeignlanguage{en}{npj Quantum Information}}, vol.~6, no.~1, pp.
+  1--6, Apr. 2020.
+
+\bibitem[Kandala et~al.(2017{\natexlab{a}})Kandala, Mezzacapo, Temme, Takita,
+  Brink, Chow, and Gambetta]{Kandala2017-kr}
+A.~Kandala, A.~Mezzacapo, K.~Temme \emph{et~al.},
+  ``\BIBforeignlanguage{en}{Hardware-efficient variational quantum eigensolver
+  for small molecules and quantum magnets},''
+  \emph{\BIBforeignlanguage{en}{Nature}}, vol. 549, no. 7671, pp. 242--246,
+  Sep. 2017.
+
+\bibitem[Kandala et~al.(2019)Kandala, Temme, C{\'o}rcoles, Mezzacapo, Chow, and
+  Gambetta]{Kandala2019-rz}
+A.~Kandala, K.~Temme, A.~D. C{\'o}rcoles \emph{et~al.},
+  ``\BIBforeignlanguage{en}{Error mitigation extends the computational reach of
+  a noisy quantum processor},'' \emph{\BIBforeignlanguage{en}{Nature}}, vol.
+  567, no. 7749, pp. 491--495, Mar. 2019.
+
+\bibitem[Gao et~al.(2019)Gao, Nakamura, Gujarati, Jones, Rice, Wood, Pistoia,
+  Garcia, and Yamamoto]{Gao2019-pp}
+Q.~Gao, H.~Nakamura, T.~P. Gujarati \emph{et~al.}, ``Computational
+  investigations of the lithium superoxide dimer rearrangement on noisy quantum
+  devices,'' Jun. 2019.
+
+\bibitem[Rice et~al.(2021)Rice, Gujarati, Motta, Takeshita, Lee, Latone, and
+  Garcia]{Rice2021-mn}
+J.~E. Rice, T.~P. Gujarati, M.~Motta \emph{et~al.},
+  ``\BIBforeignlanguage{en}{Quantum computation of dominant products in
+  lithium-sulfur batteries},'' \emph{\BIBforeignlanguage{en}{J. Chem. Phys.}},
+  vol. 154, no.~13, p. 134115, Apr. 2021.
+
+\bibitem[Gao et~al.(2021)Gao, Jones, Motta, Sugawara, Watanabe, Kobayashi,
+  Watanabe, Ohnishi, Nakamura, and Yamamoto]{Gao2021-zt}
+Q.~Gao, G.~O. Jones, M.~Motta \emph{et~al.},
+  ``\BIBforeignlanguage{en}{Applications of quantum computing for
+  investigations of electronic transitions in phenylsulfonyl-carbazole {TADF}
+  emitters},'' \emph{\BIBforeignlanguage{en}{npj Computational Materials}},
+  vol.~7, no.~1, pp. 1--9, May 2021.
+
+\bibitem[Zhao et~al.(2023)Zhao, Goings, Shin, Kyoung, Fuks, Kevin~Rhee, Rhee,
+  Wright, Nguyen, Kim, and Johri]{Zhao2023-um}
+L.~Zhao, J.~Goings, K.~Shin \emph{et~al.},
+  ``\BIBforeignlanguage{en}{Orbital-optimized pair-correlated electron
+  simulations on trapped-ion quantum computers},''
+  \emph{\BIBforeignlanguage{en}{npj Quantum Information}}, vol.~9, no.~1, pp.
+  1--9, Jun. 2023.
+
+\bibitem[Goings et~al.(2023)Goings, Zhao, Jakowski, Morris, and
+  Pooser]{Goings2023-qr}
+J.~Goings, L.~Zhao, J.~Jakowski \emph{et~al.}, ``Molecular symmetry in {VQE}: A
+  dual approach for {Trapped-Ion} simulations of benzene,'' Aug. 2023.
+
+\bibitem[QUL()]{QULACS}
+``Qulacs simulator,'' \url{http://docs.qulacs.org/en/latest/}, accessed:
+  2023-10-1.
+
+\bibitem[ion()]{ionq}
+``Ionq,'' \url{https://ionq.com/}, accessed: 2023-10-31.
+
+\bibitem[Kottmann et~al.(2021)Kottmann, Alperin-Lea, Tamayo-Mendoza,
+  Cervera-Lierta, Lavigne, Yen, Verteletskyi, Schleich, Anand, Degroote,
+  et~al.]{kottmann2021tequila}
+J.~S. Kottmann, S.~Alperin-Lea, T.~Tamayo-Mendoza \emph{et~al.}, ``Tequila: A
+  platform for rapid development of quantum algorithms,'' \emph{Quantum Science
+  and Technology}, vol.~6, no.~2, p. 024009, 2021.
+
+\bibitem[Sun et~al.(2018)Sun, Berkelbach, Blunt, Booth, Guo, Li, Liu, McClain,
+  Sayfutyarova, Sharma, et~al.]{sun2018pyscf}
+Q.~Sun, T.~C. Berkelbach, N.~S. Blunt \emph{et~al.}, ``Pyscf: the python-based
+  simulations of chemistry framework,'' \emph{Wiley Interdisciplinary Reviews:
+  Computational Molecular Science}, vol.~8, no.~1, p. e1340, 2018.
+
+\bibitem[Peruzzo et~al.(2014{\natexlab{b}})Peruzzo, McClean, Shadbolt, Yung,
+  Zhou, Love, Aspuru-Guzik, and O’brien]{peruzzo2014variational}
+A.~Peruzzo, J.~McClean, P.~Shadbolt \emph{et~al.}, ``A variational eigenvalue
+  solver on a photonic quantum processor,'' \emph{Nature communications},
+  vol.~5, no.~1, pp. 1--7, 2014.
+
+\bibitem[Goings et~al.(2022)Goings, White, Lee, Tautermann, Degroote, Gidney,
+  Shiozaki, Babbush, and Rubin]{Goings2022-xb}
+J.~J. Goings, A.~White, J.~Lee \emph{et~al.},
+  ``\BIBforeignlanguage{en}{Reliably assessing the electronic structure of
+  cytochrome {P450} on today's classical computers and tomorrow's quantum
+  computers},'' \emph{\BIBforeignlanguage{en}{Proc. Natl. Acad. Sci. U. S.
+  A.}}, vol. 119, no.~38, p. e2203533119, Sep. 2022.
+
+\bibitem[Grimsley et~al.(2019)Grimsley, Economou, Barnes, and
+  Mayhall]{grimsley2019adaptive}
+H.~R. Grimsley, S.~E. Economou, E.~Barnes, and N.~J. Mayhall, ``An adaptive
+  variational algorithm for exact molecular simulations on a quantum
+  computer,'' \emph{Nature communications}, vol.~10, no.~1, pp. 1--9, 2019.
+
+\bibitem[Bravyi et~al.(2017)Bravyi, Gambetta, Mezzacapo, and
+  Temme]{bravyi2017tapering}
+S.~Bravyi, J.~M. Gambetta, A.~Mezzacapo, and K.~Temme, ``Tapering off qubits to
+  simulate fermionic hamiltonians,'' \emph{arXiv preprint arXiv:1701.08213},
+  2017.
+
+\bibitem[Kandala et~al.(2017{\natexlab{b}})Kandala, Mezzacapo, Temme, Takita,
+  Brink, Chow, and Gambetta]{kandala2017hardware}
+A.~Kandala, A.~Mezzacapo, K.~Temme \emph{et~al.}, ``Hardware-efficient
+  variational quantum eigensolver for small molecules and quantum magnets,''
+  \emph{Nature}, vol. 549, no. 7671, pp. 242--246, 2017.
+
+\bibitem[McClean et~al.(2018)McClean, Boixo, Smelyanskiy, Babbush, and
+  Neven]{McClean2018-ku}
+J.~R. McClean, S.~Boixo, V.~N. Smelyanskiy \emph{et~al.},
+  ``\BIBforeignlanguage{en}{Barren plateaus in quantum neural network training
+  landscapes},'' \emph{\BIBforeignlanguage{en}{Nat. Commun.}}, vol.~9, no.~1,
+  p. 4812, Nov. 2018.
+
+\bibitem[Gonthier et~al.(2020)Gonthier, Radin, Buda, Doskocil, Abuan, and
+  Romero]{Gonthier2020-rh}
+J.~F. Gonthier, M.~D. Radin, C.~Buda \emph{et~al.}, ``Measurements as a
+  roadblock to near-term practical quantum advantage in chemistry: resource
+  analysis,'' Dec. 2020.
+
+\bibitem[Elfving et~al.(2020{\natexlab{a}})Elfving, Broer, Webber, Gavartin,
+  Halls, Lorton, and Bochevarov]{Elfving2020-xf}
+V.~E. Elfving, B.~W. Broer, M.~Webber \emph{et~al.}, ``How will quantum
+  computers provide an industrially relevant computational advantage in quantum
+  chemistry?'' Sep. 2020.
+
+\bibitem[Elfving et~al.(2020{\natexlab{b}})Elfving, Millaruelo, G{\'a}mez, and
+  Gogolin]{Elfving2020-zx}
+V.~E. Elfving, M.~Millaruelo, J.~A. G{\'a}mez, and C.~Gogolin, ``Simulating
+  quantum chemistry in the seniority-zero space on qubit-based quantum
+  computers,'' Jan. 2020.
+
+\bibitem[O'Brien et~al.(2022)O'Brien, Anselmetti, Gkritsis, Elfving, Polla,
+  Huggins, Oumarou, Kechedzhi, Abanin, Acharya, Aleiner, Allen, Andersen,
+  Anderson, Ansmann, Arute, Arya, Asfaw, Atalaya, Bacon, Bardin, Bengtsson,
+  Boixo, Bortoli, Bourassa, Bovaird, Brill, Broughton, Buckley, Buell, Burger,
+  Burkett, Bushnell, Campero, Chen, Chen, Chiaro, Chik, Cogan, Collins, Conner,
+  Courtney, Crook, Curtin, Debroy, Demura, Drozdov, Dunsworth, Erickson, Faoro,
+  Farhi, Fatemi, Ferreira, Flores~Burgos, Forati, Fowler, Foxen, Giang, Gidney,
+  Gilboa, Giustina, Gosula, Grajales~Dau, Gross, Habegger, Hamilton, Hansen,
+  Harrigan, Harrington, Heu, Hilton, Hoffmann, Hong, Huang, Huff, Ioffe,
+  Isakov, Iveland, Jeffrey, Jiang, Jones, Juhas, Kafri, Kelly, Khattar, Khezri,
+  Kieferov{\'a}, Kim, Klimov, Klots, Kothari, Korotkov, Kostritsa, Kreikebaum,
+  Landhuis, Laptev, Lau, Laws, Lee, Lee, Lester, Lill, Liu, Livingston,
+  Locharla, Lucero, Malone, Mandra, Martin, Martin, McClean, McCourt, McEwen,
+  Megrant, Mi, Mieszala, Miao, Mohseni, Montazeri, Morvan, Movassagh,
+  Mruczkiewicz, Naaman, Neeley, Neill, Nersisyan, Neven, Newman, Ng, Nguyen,
+  Nguyen, Niu, Omonije, Opremcak, Petukhov, Potter, Pryadko, Quintana, Rocque,
+  Roushan, Saei, Sank, Sankaragomathi, Satzinger, Schurkus, Schuster, Shearn,
+  Shorter, Shutty, Shvarts, Skruzny, Smelyanskiy, Smith, Somma, Sterling,
+  Strain, Szalay, Thor, Torres, Vidal, Villalonga, Vollgraff~Heidweiller,
+  White, Woo, Xing, Yao, Yeh, Yoo, Young, Zalcman, Zhang, Zhu, Zobrist,
+  Gogolin, Babbush, and Rubin]{OBrien2022-aa}
+T.~E. O'Brien, G.~Anselmetti, F.~Gkritsis \emph{et~al.}, ``Purification-based
+  quantum error mitigation of pair-correlated electron simulations,'' Oct.
+  2022.
+
+\bibitem[Barkoutsos et~al.(2018)Barkoutsos, Gonthier, Sokolov, Moll, Salis,
+  Fuhrer, Ganzhorn, Egger, Troyer, Mezzacapo, et~al.]{barkoutsos2018quantum}
+P.~K. Barkoutsos, J.~F. Gonthier, I.~Sokolov \emph{et~al.}, ``Quantum
+  algorithms for electronic structure calculations: Particle-hole hamiltonian
+  and optimized wave-function expansions,'' \emph{Physical Review A}, vol.~98,
+  no.~2, p. 022322, 2018.
+
+\bibitem[Khan et~al.(2022)Khan, Tudorovskaya, Kirsopp, Mu{\~n}oz~Ramo, Warrier,
+  Papanastasiou, and Singh]{Khan2022-cu}
+I.~T. Khan, M.~Tudorovskaya, J.~J.~M. Kirsopp \emph{et~al.}, ``Chemically aware
+  unitary coupled cluster with ab initio calculations on system model h1: A
+  refrigerant chemicals application,'' Oct. 2022.
+
+\bibitem[noa()]{noauthor_undated-uy}
+``\BIBforeignlanguage{en}{{IonQ} quantum cloud},''
+  \url{https://ionq.com/quantum-cloud}, accessed: 2023-5-22.
+
+\bibitem[Bonet-Monroig et~al.(2018)Bonet-Monroig, Sagastizabal, Singh, and
+  O'Brien]{Bonet-Monroig2018-xa}
+X.~Bonet-Monroig, R.~Sagastizabal, M.~Singh, and T.~E. O'Brien, ``Low-cost
+  error mitigation by symmetry verification,'' \emph{Phys. Rev. A}, vol.~98,
+  no.~6, p. 062339, Dec. 2018.
+
+\bibitem[Urbanek et~al.(2021)Urbanek, Nachman, Pascuzzi, He, Bauer, and
+  de~Jong]{Urbanek2021-aw}
+M.~Urbanek, B.~Nachman, V.~R. Pascuzzi \emph{et~al.},
+  ``\BIBforeignlanguage{en}{Mitigating depolarizing noise on quantum computers
+  with {Noise-Estimation} circuits},'' \emph{\BIBforeignlanguage{en}{Phys. Rev.
+  Lett.}}, vol. 127, no.~27, p. 270502, Dec. 2021.
+
+\bibitem[Montanaro and Stanisic(2021)]{Montanaro2021-yv}
+A.~Montanaro and S.~Stanisic, ``Error mitigation by training with fermionic
+  linear optics,'' Feb. 2021.
+
+\bibitem[Bennewitz et~al.(2022)Bennewitz, Hopfmueller, Kulchytskyy,
+  Carrasquilla, and Ronagh]{Bennewitz2022-fo}
+E.~R. Bennewitz, F.~Hopfmueller, B.~Kulchytskyy \emph{et~al.},
+  ``\BIBforeignlanguage{en}{Neural error mitigation of {Near-Term} quantum
+  simulations},'' \emph{\BIBforeignlanguage{en}{Nature Machine Intelligence}},
+  vol.~4, no.~7, pp. 618--624, Jul. 2022.
+
+\bibitem[Quek et~al.(2022)Quek, Fran{\c c}a, Khatri, Meyer, and
+  Eisert]{Quek2022-ly}
+Y.~Quek, D.~S. Fran{\c c}a, S.~Khatri \emph{et~al.}, ``Exponentially tighter
+  bounds on limitations of quantum error mitigation,'' Oct. 2022.
+
+\bibitem[Weber et~al.(2021)Weber, Riebisch, Borras, Jansen, and
+  Kr{\"u}cker]{Weber2021-eg}
+T.~Weber, M.~Riebisch, K.~Borras \emph{et~al.}, ``Modelling for quantum error
+  mitigation,'' Apr. 2021.
+
+\end{thebibliography}
+
+
+\end{document}

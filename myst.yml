@@ -13,7 +13,8 @@ project:
     - file: main.tex
     
 site:
-  template: book-theme
-  # options:
+  template: article-theme
+  options:
+    style: ./style.css
   #   favicon: favicon.ico
   #   logo: site_logo.png
